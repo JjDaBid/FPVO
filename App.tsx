@@ -152,11 +152,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       {/* MOBILE HEADER */}
       <header className="fixed top-0 left-0 z-50 flex w-full items-center justify-between border-b border-app-border bg-app-bg-secondary px-6 py-4 lg:hidden">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center rounded-lg bg-brand/20 p-2 text-brand">
-            <span className="material-symbols-outlined font-black" style={{ fontSize: '24px' }}>bolt</span>
-          </div>
-          <span className="text-xl font-black italic text-app-text-title">FPVO</span>
+        <div className="flex items-center justify-center py-2">
+          <img src="/LogoFPVO.png" alt="FPVO Logo" className="h-10 w-auto object-contain" />
         </div>
         <button onClick={() => setMobileMenuOpen(true)} className="text-app-text-title">
           <span className="material-symbols-outlined" style={{ fontSize: '30px' }}>menu</span>

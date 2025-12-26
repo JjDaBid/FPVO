@@ -47,7 +47,7 @@ const LandingPage: React.FC = () => {
                             <span className="text-xs font-bold text-brand tracking-wider uppercase drop-shadow-lg">SimRacing Profesional</span>
                         </div>
 
-                        <h1 className="text-6xl md:text-7xl font-black italic leading-[0.85] tracking-tighter text-white animate-fade-in-up delay-100">
+                        <h1 className="text-6xl md:text-7xl font-display font-black italic leading-[0.85] tracking-tighter text-white animate-fade-in-up delay-100">
                             PRIMADOS QUE <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-cyan-400 drop-shadow-[0_0_30px_rgba(19,91,236,0.6)]">VALEN DE</span> <br />
                             ORO

@@ -91,7 +91,7 @@ const MyEvents: React.FC = () => {
           <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-background-main p-2 rounded-xl border border-border-default">
 
             {/* Tabs */}
-            <div className="flex bg-background-surface rounded-lg p-1">
+            <div className="flex bg-background-surface rounded-lg p-1 overflow-x-auto">
               {(Object.keys(tabDetails) as Array<keyof typeof tabDetails>).map((tab) => (
                 <button
                   key={tab}
