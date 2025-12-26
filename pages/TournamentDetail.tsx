@@ -1,129 +1,329 @@
-
-import React from 'react';
-import { useParams, Link } from 'react-router-dom';
-import data from '@/data';
+import React, { useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useDocument, useCollection, useUserProfile } from '../hooks/useFirestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const TournamentDetail: React.FC = () => {
-  const { id } = useParams();
-  const event = data.events.find(e => e.id === id) || data.events[0];
-  const leaders = event.leaderboard || [];
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  // Data
+  const { data: tournament, loading } = useDocument('tournaments', id || 'unknown');
+  const { data: tracks } = useCollection('tracks');
+  const { data: cars } = useCollection('cars');
+  const { data: allUsers } = useCollection('users');
+  const { data: resultsData } = useCollection(`tournaments/${id}/results`);
+  const { profile: currentUser } = useUserProfile();
+
+  // State
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [sendingInvite, setSendingInvite] = useState<string | null>(null);
+
+  // Aggregation Logic (Now that we have resultsData)
+  const standingsMap: Record<string, any> = {};
+  (resultsData || []).forEach((r: any) => {
+    const raceResults = r.standings || r.race || [];
+    raceResults.forEach((entry: any) => {
+      if (!entry.userId) return;
+      if (!standingsMap[entry.userId]) {
+        standingsMap[entry.userId] = {
+          userId: entry.userId,
+          nickname: entry.nickname || 'Piloto',
+          points: 0,
+          wins: 0,
+          podiums: 0,
+          races: 0
+        };
+      }
+      standingsMap[entry.userId].points += (Number(entry.points) || 0);
+      standingsMap[entry.userId].races += 1;
+      if (entry.position === 1) standingsMap[entry.userId].wins += 1;
+      if (entry.position <= 3) standingsMap[entry.userId].podiums += 1;
+    });
+  });
+  const standings = Object.values(standingsMap).sort((a: any, b: any) => b.points - a.points);
+
+
+  if (loading) return <div className="flex h-screen items-center justify-center bg-app-bg-main"><div className="h-12 w-12 animate-spin rounded-full border-4 border-brand border-t-transparent"></div></div>;
+
+  if (!tournament) return (
+    <div className="flex h-screen flex-col items-center justify-center bg-app-bg-main gap-4">
+      <h2 className="text-2xl font-bold text-white">Torneo no encontrado</h2>
+      <button onClick={() => navigate('/my-events')} className="text-brand hover:underline font-bold">Volver a Mis Eventos</button>
+    </div>
+  );
+
+  // Helpers
+  const getTrackName = (id: string) => tracks ? (tracks.find((t: any) => t.id === id)?.name || 'Pista Desconocida') : id;
+  const getCarName = (id: string) => {
+    const c = cars ? cars.find((x: any) => x.id === id) : null;
+    return c ? `${c.brand} ${c.model}` : 'Coche Desconocido';
+  };
+
+  const config = tournament.config || {};
+  const races = config.races || [];
+  const points = config.pointsSystem || [];
+  const statusColor = tournament.status === 'active' ? 'text-[#0bda5e] bg-[#0bda5e]/10 border-[#0bda5e]/20' : 'text-slate-400 bg-slate-400/10 border-slate-400/20';
+
+  // Invitation Logic
+  const handleInvite = async (receiverId: string) => {
+    if (!currentUser) {
+      alert("Debes estar logueado para invitar.");
+      return;
+    }
+    setSendingInvite(receiverId);
+    try {
+      await addDoc(collection(db, 'invitations'), {
+        tournamentId: id,
+        tournamentName: tournament.name,
+        senderId: currentUser.id,
+        senderName: currentUser.nickname || 'Un Organizador',
+        receiverId: receiverId,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        type: 'tournament_invite'
+      });
+      alert("Invitación enviada con éxito!");
+    } catch (e) {
+      console.error(e);
+      alert("Error al enviar invitación");
+    } finally {
+      setSendingInvite(null);
+    }
+  };
+
+  // Filter Users for Modal
+  const potentialPilots = allUsers ? allUsers.filter((u: any) => u.id !== currentUser?.id).map((u: any) => ({
+    ...u,
+    isOnline: Math.random() > 0.6
+  })).sort((a: any, b: any) => (b.isOnline ? 1 : 0) - (a.isOnline ? 1 : 0)) : [];
 
   return (
-    <div className="px-4 md:px-10 py-6 md:py-10 flex flex-col gap-8">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between gap-6 items-start md:items-center">
-        <div className="flex min-w-72 flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <h1 className="text-white text-3xl md:text-4xl font-black tracking-tight">{event.title}</h1>
-            <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide border border-green-500/20">{event.status}</span>
-          </div>
-          <p className="text-[#92a4c9] text-base flex items-center gap-2">
-            <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-            Ene 15 - Mar 30, 2024 • Sim Racing Hub - Temporada 5
-          </p>
+    <div className="p-6 md:p-10 flex flex-col gap-8 min-h-screen">
+
+      {/* HEADER */}
+      <div className="relative rounded-2xl overflow-hidden border border-border-default shadow-2xl bg-background-surface">
+        <div className="h-64 w-full bg-cover bg-center" style={{ backgroundImage: `url("${tournament.image || 'https://placehold.co/1200x400'}")` }}>
+          <div className="absolute inset-0 bg-gradient-to-t from-background-surface via-background-surface/80 to-transparent"></div>
         </div>
-        <Link to="/competition-setup" className="flex items-center gap-2 rounded-lg h-10 px-5 bg-[#232f48] hover:bg-[#2e3e5e] text-white text-sm font-bold transition-colors">
-          <span className="material-symbols-outlined text-[20px]">settings</span>
-          <span>Configuración</span>
-        </Link>
+
+        <div className="absolute bottom-0 left-0 w-full p-6 md:p-10 flex flex-col md:flex-row justify-between items-end gap-6">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <span className={`px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider border ${statusColor} backdrop-blur-md`}>
+                {tournament.status || 'Estado Desconocido'}
+              </span>
+              <span className="text-text-muted text-sm font-bold uppercase tracking-wide">
+                {tournament.simulator?.name || 'Simulador'}
+              </span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-black text-white italic tracking-tight uppercase shadow-black drop-shadow-lg">
+              {tournament.name}
+            </h1>
+          </div>
+
+          <div className="flex gap-4">
+            <button
+              onClick={() => navigate('/competition-setup', { state: { editMode: true, tournamentId: id } })}
+              className="bg-background-secondary hover:bg-background-highlight border border-border-default text-white px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined">settings</span> Configuración
+            </button>
+            <button
+              onClick={() => setInviteModalOpen(true)}
+              className="bg-brand hover:bg-brand-hover text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-brand/20 transition-all flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined">person_add</span> Invitar Pilotos
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-xl p-6 border border-[#232f48] bg-[#161e2c]">
-          <p className="text-[#92a4c9] text-sm font-bold uppercase tracking-wider mb-2">Pilotos Inscritos</p>
-          <p className="text-white text-3xl font-bold">{event.info.split(' ')[0]}</p>
-        </div>
-        <div className="rounded-xl p-6 border border-[#232f48] bg-[#161e2c]">
-          <p className="text-[#92a4c9] text-sm font-bold uppercase tracking-wider mb-2">Carreras Completadas</p>
-          <p className="text-white text-3xl font-bold">4 <span className="text-slate-400 text-lg font-medium">/ 10</span></p>
-        </div>
-        <div className="rounded-xl p-6 border border-[#232f48] bg-[#161e2c]">
-          <p className="text-[#92a4c9] text-sm font-bold uppercase tracking-wider mb-2">Líder del Campeonato</p>
-          <p className="text-white text-2xl font-bold truncate">{leaders[0]?.name || 'N/A'}</p>
-          <p className="text-primary text-sm font-bold">{leaders[0]?.team || 'N/A'}</p>
-        </div>
+      {/* STATS GRID */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard icon="groups" value={config.pilotCount || 0} label="Pilotos" />
+        <StatCard icon="flag" value={`${tournament.currentRound || 1}/${races.length}`} label="Ronda Actual" />
+        <StatCard icon="emoji_events" value={points[0] || '-'} label="Pts Ganador" />
+        <StatCard icon="calendar_month" value={tournament.createdAt ? new Date(tournament.createdAt.seconds * 1000).toLocaleDateString() : '-'} label="Fecha Inicio" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: Race Calendar */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          <h2 className="text-white text-xl font-bold border-b border-[#232f48] pb-2">Calendario</h2>
+
+        {/* LEFT: CALENDAR */}
+        <div className="lg:col-span-8 flex flex-col gap-6">
+          <div className="flex items-center justify-between border-b border-border-default pb-4">
+            <h2 className="text-2xl font-black italic text-white">CALENDARIO DE CARRERAS</h2>
+            <span className="text-sm font-bold text-text-muted">{races.length} Eventos</span>
+          </div>
+
           <div className="flex flex-col gap-4">
-            <RaceCard title="GP Silverstone" date="15 Ene 2024" winner="L. Hamilton" completed={true} />
-            <RaceCard title="GP Monza" date="29 Ene 2024" winner="M. Verstappen" completed={true} />
-            <div className="group flex flex-col bg-[#161e2c] border-2 border-primary rounded-xl overflow-hidden shadow-lg shadow-primary/10">
-              <div className="relative h-28 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.8)), url("${event.image}")` }}>
-                <div className="absolute top-2 right-2 px-2 py-1 bg-primary text-white rounded text-xs font-bold">Próxima Carrera</div>
-                <div className="absolute bottom-3 left-4">
-                  <h3 className="text-white font-black text-xl">{event.title}</h3>
-                  <p className="text-primary-100 text-sm font-medium">{event.date} GMT</p>
+            {races.map((race: any, index: number) => (
+              <div key={index} className="group bg-background-surface border border-border-default rounded-xl p-5 hover:border-brand/50 transition-all flex flex-col md:flex-row items-center gap-6">
+                <div className="flex flex-col items-center justify-center min-w-[60px]">
+                  <span className="text-xs font-bold text-text-muted uppercase">Ronda</span>
+                  <span className="text-3xl font-black text-white italic">{index + 1}</span>
+                </div>
+                <div className="flex-1 flex flex-col gap-1 w-full text-center md:text-left">
+                  <h3 className="text-xl font-bold text-white group-hover:text-brand transition-colors">
+                    {getTrackName(race.trackId)}
+                  </h3>
+                  <p className="text-sm text-text-muted font-medium flex items-center justify-center md:justify-start gap-2">
+                    <span className="material-symbols-outlined text-[16px]">directions_car</span>
+                    {getCarName(race.carId)}
+                  </p>
+                </div>
+                <div className="flex gap-4 text-center">
+                  <div className="bg-background-secondary rounded-lg p-2 min-w-[70px]">
+                    <p className="text-[10px] text-text-muted font-bold uppercase">Vueltas</p>
+                    <p className="text-white font-bold">{race.laps}</p>
+                  </div>
+                  <div className="bg-background-secondary rounded-lg p-2 min-w-[70px]">
+                    <p className="text-[10px] text-text-muted font-bold uppercase">Qualy</p>
+                    <p className="text-white font-bold">{race.qualyTime}'</p>
+                  </div>
+                </div>
+                <div>
+                  <button
+                    onClick={() => navigate(`/tournament/${id}/race/${race.id}`)}
+                    className="text-brand hover:text-white font-bold text-sm flex items-center gap-1 transition-colors"
+                  >
+                    Detalles <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  </button>
                 </div>
               </div>
-              <div className="p-4 flex flex-col gap-3">
-                <Link to="/result-entry" className="w-full text-center bg-primary hover:bg-blue-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">
-                  Ingresar Resultados
-                </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* RIGHT: STANDINGS */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
+          <div className="flex items-center justify-between border-b border-border-default pb-4">
+            <h2 className="text-2xl font-black italic text-white">CLASIFICACIÓN</h2>
+          </div>
+
+          {standings.length > 0 ? (
+            <div className="bg-background-surface border border-border-default rounded-xl overflow-hidden shadow-lg">
+              <table className="w-full text-left">
+                <thead className="bg-background-secondary border-b border-border-default">
+                  <tr>
+                    <th className="py-3 px-4 text-xs font-bold text-text-muted uppercase">Pos</th>
+                    <th className="py-3 px-4 text-xs font-bold text-text-muted uppercase">Piloto</th>
+                    <th className="py-3 px-4 text-xs font-bold text-text-muted uppercase text-center">Pts</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-default">
+                  {standings.map((p: any, i: number) => (
+                    <tr key={i} className={`hover:bg-background-highlight transition-colors ${i === 0 ? 'bg-brand/5' : ''}`}>
+                      <td className="py-3 px-4 text-center w-12">
+                        <div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-black ${i === 0 ? 'bg-yellow-400 text-black' : i === 1 ? 'bg-gray-300 text-black' : i === 2 ? 'bg-amber-600 text-black' : 'text-text-muted bg-background-input'}`}>
+                          {i + 1}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="font-bold text-white text-sm">{p.nickname}</p>
+                        <div className="flex gap-2 text-[10px] text-text-muted mt-0.5">
+                          {p.wins > 0 && <span className="text-yellow-400 flex items-center gap-0.5"><span className="material-symbols-outlined text-[10px]">emoji_events</span>{p.wins}</span>}
+                          {p.podiums > 0 && <span className="text-gray-400 flex items-center gap-0.5"><span className="material-symbols-outlined text-[10px]">leaderboard</span>{p.podiums}</span>}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center font-black text-white">{p.points}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {standings.length > 10 && (
+                <div className="p-2 text-center border-t border-border-default">
+                  <button className="text-xs font-bold text-text-muted hover:text-white uppercase">Ver Todos</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-background-surface border border-border-default rounded-xl p-6 text-center">
+              <div className="w-16 h-16 bg-background-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="material-symbols-outlined text-3xl text-text-muted">leaderboard</span>
               </div>
+              <h3 className="text-white font-bold text-lg mb-2">Tabla Vacía</h3>
+              <p className="text-text-muted text-sm mb-6">Aún no se han registrado resultados para este torneo.</p>
+              <button className="w-full bg-background-input hover:bg-background-highlight text-white border border-border-default py-2 rounded-lg font-bold text-sm transition-colors">
+                Ver Tabla Completa
+              </button>
+            </div>
+          )}
+
+          {/* Points System Preview */}
+          <div className="bg-background-surface border border-border-default rounded-xl p-6">
+            <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-4 border-b border-border-default pb-2">Sistema de Puntuación</h3>
+            <div className="grid grid-cols-5 gap-2">
+              {points.slice(0, 10).map((p: any, i: number) => (
+                <div key={i} className="flex flex-col items-center bg-background-secondary rounded p-1">
+                  <span className="text-[10px] text-text-muted font-bold">#{i + 1}</span>
+                  <span className="text-brand font-bold">{p}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Right Column: Leaderboard */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-          <h2 className="text-white text-xl font-bold border-b border-[#232f48] pb-2">Tabla de Posiciones</h2>
-          <div className="bg-[#161e2c] border border-[#232f48] rounded-xl overflow-hidden">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-[#1c2636] text-xs uppercase tracking-wider text-[#92a4c9] font-semibold">
-                  <th className="px-6 py-4 text-center w-16">Pos</th>
-                  <th className="px-6 py-4">Piloto / Equipo</th>
-                  <th className="px-6 py-4 text-center hidden sm:table-cell">Victorias</th>
-                  <th className="px-6 py-4 text-right">Puntos</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#232f48]">
-                {leaders.map((pilot, idx) => (
-                  <tr key={idx} className="group hover:bg-primary/10 transition-colors cursor-pointer">
-                    <td className="px-6 py-4 text-center">
-                      <div className={`size-8 mx-auto rounded-full font-bold flex items-center justify-center ${pilot.color}`}>{pilot.pos}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-bold text-white group-hover:text-primary">{pilot.name}</p>
-                        <p className="text-xs text-[#92a4c9]">{pilot.team}</p>
+      </div>
+
+      {/* INVITATION MODAL */}
+      {inviteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setInviteModalOpen(false)}></div>
+          <div className="relative bg-[#1a2332] w-full max-w-lg rounded-2xl border border-border-default shadow-2xl p-6 flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-black text-white italic uppercase">Invitar Pilotos</h2>
+              <button onClick={() => setInviteModalOpen(false)} className="text-text-muted hover:text-white"><span className="material-symbols-outlined">close</span></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+              {potentialPilots.map((user: any) => (
+                <div key={user.id} className="flex items-center justify-between p-3 rounded-xl bg-background-surface border border-transparent hover:border-brand/30 transition-all group">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-full bg-background-secondary flex items-center justify-center text-white font-bold text-sm">
+                        {user.nickname ? user.nickname.substring(0, 2).toUpperCase() : 'US'}
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-center hidden sm:table-cell text-slate-300">{pilot.wins}</td>
-                    <td className="px-6 py-4 text-right font-bold text-lg text-white">{pilot.points}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="p-4 bg-[#1c2636] text-center border-t border-[#232f48]">
-              <button className="text-sm font-bold text-primary hover:underline">Ver clasificación completa</button>
+                      {user.isOnline && (
+                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#0bda5e] rounded-full border-2 border-[#1a2332] shadow-[0_0_8px_#0bda5e]"></div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-white font-bold">{user.nickname || 'Usuario'}</p>
+                      <p className="text-xs text-text-muted font-medium flex items-center gap-1">
+                        {user.isOnline ? (
+                          <span className="text-[#0bda5e] font-bold">Online</span>
+                        ) : 'Offline'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleInvite(user.id)}
+                    disabled={sendingInvite === user.id}
+                    className="bg-brand/10 hover:bg-brand text-brand hover:text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
+                  >
+                    {sendingInvite === user.id ? 'Enviando...' : 'Invitar'}
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-      </div>
+      )}
+
     </div>
   );
 };
 
-const RaceCard: React.FC<any> = ({ title, date, winner, completed }) => (
-  <div className="group flex flex-col bg-[#161e2c] border border-[#232f48] rounded-xl overflow-hidden hover:border-primary/50 transition-colors">
-    <div className="relative h-24 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url("https://picsum.photos/400/100?random=${title}")` }}>
-      <div className="absolute top-2 right-2 px-2 py-1 bg-black/50 backdrop-blur-md rounded text-xs font-bold text-white flex items-center gap-1">
-        <span className="material-symbols-outlined text-[14px] text-green-400">check_circle</span> Finalizada
-      </div>
-      <div className="absolute bottom-2 left-3">
-        <h3 className="text-white font-bold text-lg">{title}</h3>
-        <p className="text-slate-300 text-xs">{date}</p>
-      </div>
+const StatCard: React.FC<{ icon: string, value: string | number, label: string }> = ({ icon, value, label }) => (
+  <div className="bg-background-surface border border-border-default rounded-xl p-4 flex items-center gap-4 hover:border-brand/30 transition-colors">
+    <div className="w-12 h-12 rounded-lg bg-brand/10 flex items-center justify-center text-brand">
+      <span className="material-symbols-outlined text-2xl">{icon}</span>
     </div>
-    <div className="p-3 flex justify-between items-center bg-[#1c2636]">
-      <span className="text-sm font-medium text-slate-300">Ganador: {winner}</span>
-      <button className="text-xs font-bold text-primary hover:text-primary/80">Ver Resultados</button>
+    <div>
+      <p className="text-2xl font-black text-white leading-none">{value}</p>
+      <p className="text-xs text-text-muted font-bold uppercase tracking-wider mt-1">{label}</p>
     </div>
   </div>
 );
