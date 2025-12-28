@@ -95,7 +95,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <aside className="flex h-full w-72 flex-col justify-between border-r border-app-border bg-app-bg-secondary p-6 hidden lg:flex flex-shrink-0">
         <div className="flex flex-col gap-8">
           <div className="flex items-center justify-center py-2">
-            <img src="../public/LogoFPVO.png" alt="FPVO Logo" className="h-12 w-auto object-contain" />
+            <img src="/LogoFPVO.png" alt="FPVO Logo" className="h-12 w-auto object-contain" />
           </div>
 
           <nav className="flex flex-col gap-2">
