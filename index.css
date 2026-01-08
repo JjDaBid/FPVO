@@ -68,6 +68,17 @@ body {
   background: #475569;
 }
 
+/* Global Select Styles */
+select {
+  background-color: var(--bg-input);
+  color: var(--text-title);
+}
+
+select option {
+  background-color: var(--bg-main);
+  color: var(--text-title);
+}
+
 /* ANIMATIONS */
 @keyframes fadeInUp {
   from {
