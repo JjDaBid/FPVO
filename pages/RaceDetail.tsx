@@ -31,7 +31,8 @@ const RaceDetail: React.FC = () => {
     // Resolve Track Name & Image
     const track = tracksData ? tracksData.find((t: any) => t.id === raceConfig.trackId) : null;
     const trackName = track ? track.name : (raceConfig.trackId || 'Carrera');
-    const trackImage = track?.imageUrl || tournament.image || 'https://placehold.co/1200x400';
+    // const trackImage = track?.imageUrl || tournament.image || 'https://placehold.co/1200x400';
+    const trackImage = track?.imageUrl || tournament.image || '/bannerFPVO.png';
 
     // Resolve Car & Image
     const car = carsData ? carsData.find((c: any) => c.id === raceConfig.carId) : null;

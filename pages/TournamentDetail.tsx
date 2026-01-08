@@ -109,7 +109,7 @@ const TournamentDetail: React.FC = () => {
 
       {/* HEADER */}
       <div className="relative rounded-2xl overflow-hidden border border-border-default shadow-2xl bg-background-surface">
-        <div className="h-64 w-full bg-cover bg-center" style={{ backgroundImage: `url("${tournament.image || 'https://placehold.co/1200x400'}")` }}>
+        <div className="h-80 w-full bg-cover bg-center" style={{ backgroundImage: `url("${tournament.image || '/bannerFPVO2.png'}")` }}>
           <div className="absolute inset-0 bg-gradient-to-t from-background-surface via-background-surface/80 to-transparent"></div>
         </div>
 
@@ -119,7 +119,7 @@ const TournamentDetail: React.FC = () => {
               <span className={`px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider border ${statusColor} backdrop-blur-md`}>
                 {tournament.status || 'Estado Desconocido'}
               </span>
-              <span className="text-text-muted text-sm font-bold uppercase tracking-wide">
+              <span className="text-text-muted text-gray-300 text-sm font-bold uppercase tracking-wide">
                 {tournament.simulator?.name || 'Simulador'}
               </span>
             </div>
