@@ -217,7 +217,7 @@ const CompetitionSetup: React.FC = () => {
         console.log("Tournament created:", docRef.id);
       }
 
-      navigate('/');
+      navigate('/dashboard');
     } catch (e) {
       console.error(e);
       alert("Error al guardar el torneo");
