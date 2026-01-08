@@ -16,6 +16,7 @@ const RaceDetail: React.FC = () => {
 
     // Fetch all Tracks and Cars to resolve names/images
     const { data: tracksData } = useCollection('tracks');
+    const { data: allUsers } = useCollection('users');
     const { data: carsData } = useCollection('cars');
 
     const [activeTab, setActiveTab] = useState<'race' | 'qualy' | 'practice'>('race');
@@ -36,6 +37,11 @@ const RaceDetail: React.FC = () => {
     const car = carsData ? carsData.find((c: any) => c.id === raceConfig.carId) : null;
     const carName = car ? `${car.brand} ${car.model}` : 'Coche Desconocido';
     const carImage = car?.image || 'https://placehold.co/400x200?text=Car';
+
+    const getUserAvatar = (uid: string) => {
+        const u = allUsers?.find((user: any) => user.id === uid);
+        return u?.avatar || 'https://placehold.co/150?text=User';
+    };
 
     const hasResults = !!results;
     const sessionResults = results?.[activeTab === 'race' ? 'standings' : activeTab] || [];
@@ -151,6 +157,7 @@ const RaceDetail: React.FC = () => {
                             <thead>
                                 <tr className="bg-background-secondary border-b border-border-default text-text-muted text-xs uppercase tracking-wider font-bold">
                                     <th className="px-6 py-4 w-20 text-center">Pos</th>
+                                    <th className="px-6 py-4 w-10"></th>
                                     <th className="px-6 py-4">Piloto</th>
                                     {activeTab === 'race' && <th className="px-6 py-4 text-center">Puntos</th>}
                                     {activeTab !== 'race' && <th className="px-6 py-4 text-right">Tiempo</th>}
@@ -164,6 +171,9 @@ const RaceDetail: React.FC = () => {
                                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black ${res.position === 1 ? 'bg-yellow-400 text-black' : res.position === 2 ? 'bg-gray-300 text-black' : res.position === 3 ? 'bg-amber-600 text-black' : 'text-text-muted bg-background-input'}`}>
                                                     {res.position}
                                                 </div>
+                                            </td>
+                                            <td className="px-6 py-4 w-10 text-center">
+                                                <div className="w-8 h-8 rounded-full bg-cover bg-center bg-gray-700 mx-auto" style={{ backgroundImage: `url("${getUserAvatar(res.userId)}")` }}></div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <p className="font-bold text-white text-lg group-hover:text-brand transition-colors">{res.nickname || res.userId}</p>

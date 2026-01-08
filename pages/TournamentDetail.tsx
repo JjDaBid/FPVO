@@ -61,6 +61,11 @@ const TournamentDetail: React.FC = () => {
     return c ? `${c.brand} ${c.model}` : 'Coche Desconocido';
   };
 
+  const getUserAvatar = (uid: string) => {
+    const u = allUsers?.find((user: any) => user.id === uid);
+    return u?.avatar || 'https://placehold.co/150?text=User';
+  };
+
   const config = tournament.config || {};
   const races = config.races || [];
   const points = config.pointsSystem || [];
@@ -208,6 +213,7 @@ const TournamentDetail: React.FC = () => {
                 <thead className="bg-background-secondary border-b border-border-default">
                   <tr>
                     <th className="py-3 px-4 text-xs font-bold text-text-muted uppercase">Pos</th>
+                    <th className="py-3 px-4 w-10"></th>
                     <th className="py-3 px-4 text-xs font-bold text-text-muted uppercase">Piloto</th>
                     <th className="py-3 px-4 text-xs font-bold text-text-muted uppercase text-center">Pts</th>
                   </tr>
@@ -219,6 +225,9 @@ const TournamentDetail: React.FC = () => {
                         <div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-black ${i === 0 ? 'bg-yellow-400 text-black' : i === 1 ? 'bg-gray-300 text-black' : i === 2 ? 'bg-amber-600 text-black' : 'text-text-muted bg-background-input'}`}>
                           {i + 1}
                         </div>
+                      </td>
+                      <td className="py-3 px-4 w-10 text-center">
+                        <div className="w-8 h-8 rounded-full bg-cover bg-center bg-gray-700 mx-auto" style={{ backgroundImage: `url("${getUserAvatar(p.userId)}")` }}></div>
                       </td>
                       <td className="py-3 px-4">
                         <p className="font-bold text-white text-sm">{p.nickname}</p>
@@ -282,9 +291,7 @@ const TournamentDetail: React.FC = () => {
                 <div key={user.id} className="flex items-center justify-between p-3 rounded-xl bg-background-surface border border-transparent hover:border-brand/30 transition-all group">
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-background-secondary flex items-center justify-center text-white font-bold text-sm">
-                        {user.nickname ? user.nickname.substring(0, 2).toUpperCase() : 'US'}
-                      </div>
+                      <div className="w-10 h-10 rounded-full bg-cover bg-center bg-background-secondary" style={{ backgroundImage: `url("${user.avatar || 'https://placehold.co/150?text=User'}")` }}></div>
                       {user.isOnline && (
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#0bda5e] rounded-full border-2 border-[#1a2332] shadow-[0_0_8px_#0bda5e]"></div>
                       )}
