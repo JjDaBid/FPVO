@@ -173,7 +173,7 @@ const RaceDetail: React.FC = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 w-10 text-center">
-                                                <div className="w-8 h-8 rounded-full bg-cover bg-center bg-gray-700 mx-auto" style={{ backgroundImage: `url("${getUserAvatar(res.userId)}")` }}></div>
+                                                <div className="w-12 h-12 rounded-full bg-cover bg-center bg-gray-700 mx-auto" style={{ backgroundImage: `url("${getUserAvatar(res.userId)}")` }}></div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <p className="font-bold text-white text-lg group-hover:text-brand transition-colors">{res.nickname || res.userId}</p>

@@ -222,12 +222,12 @@ const TournamentDetail: React.FC = () => {
                   {standings.map((p: any, i: number) => (
                     <tr key={i} className={`hover:bg-background-highlight transition-colors ${i === 0 ? 'bg-brand/5' : ''}`}>
                       <td className="py-3 px-4 text-center w-12">
-                        <div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-black ${i === 0 ? 'bg-yellow-400 text-black' : i === 1 ? 'bg-gray-300 text-black' : i === 2 ? 'bg-amber-600 text-black' : 'text-text-muted bg-background-input'}`}>
+                        <div className={`w-8 h-8 rounded flex items-center justify-center text-xs font-black ${i === 0 ? 'bg-yellow-400 text-black' : i === 1 ? 'bg-gray-300 text-black' : i === 2 ? 'bg-amber-600 text-black' : 'text-text-muted bg-background-input'}`}>
                           {i + 1}
                         </div>
                       </td>
                       <td className="py-3 px-4 w-10 text-center">
-                        <div className="w-8 h-8 rounded-full bg-cover bg-center bg-gray-700 mx-auto" style={{ backgroundImage: `url("${getUserAvatar(p.userId)}")` }}></div>
+                        <div className="w-12 h-12 rounded-full bg-cover bg-center bg-gray-700 mx-auto" style={{ backgroundImage: `url("${getUserAvatar(p.userId)}")` }}></div>
                       </td>
                       <td className="py-3 px-4">
                         <p className="font-bold text-white text-sm">{p.nickname}</p>
